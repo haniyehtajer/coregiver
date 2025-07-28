@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 def generate_input_uniform(num_particles, particle_mass, particle_cmf, output_filename):
     """
@@ -6,26 +7,24 @@ def generate_input_uniform(num_particles, particle_mass, particle_cmf, output_fi
 
     Args:
         num_particles (int): The total number of particles to generate.
-        particle_mass (float): The mass assigned to each particle.
+        particle_mass (float or array-like): Mass(es) for the particles. Can be a single float or an array of floats.
         particle_cmf (float): The core mass fraction (CMF) assigned to each particle.
         output_filename (str): The name of the output file.
     """
-    print(f"Generating {num_particles} particles with mass={particle_mass} and CMF={particle_cmf}...")
+    particle_mass = np.array(particle_mass)
+
+    if particle_mass.size != 1 and particle_mass.size != num_particles:
+        raise ValueError(f"particle_mass must be a single value or an array of length {num_particles}")
+
+    print(f"Generating {num_particles} particles with CMF={particle_cmf}...")
     print(f"Output file: {output_filename}")
 
     try:
-        # Open the file in write mode. 'w' will create the file if it doesn't exist,
-        # or overwrite it if it does. Use 'a' if you want to append to an existing file.
         with open(output_filename, 'w') as f:
-            # Loop to generate and write particle data
             for i in range(num_particles):
-                # Hash generation: Similar to the C code, starting from 1
-                # For simplicity, we're treating all as one type of particle for hashing.
                 particle_hash = i + 1
-
-                # Write data in tab-separated format
-                # Using f-strings for easy formatting and precision for floats
-                f.write(f"{particle_hash}\t{particle_mass:.8e}\t{particle_cmf:.8e}\n")
+                mass = particle_mass if particle_mass.size == 1 else particle_mass[i]
+                f.write(f"{particle_hash}\t{mass:.8e}\t{particle_cmf:.8e}\n")
 
         print(f"Successfully generated '{output_filename}' with {num_particles} entries.")
 
@@ -35,40 +34,42 @@ def generate_input_uniform(num_particles, particle_mass, particle_cmf, output_fi
         print(f"An unexpected error occurred: {e}")
 
 
-def generate_input_step_function(num_particles, particle_mass, semi_majors, inner_cmf, outer_cmf, boundary, output_filename):
+
+def generate_input_step_function(num_particles, particle_mass, semi_majors,
+                                 inner_cmf, outer_cmf, boundary, output_filename):
     """
-    Generates a simplified DBCT input file with particle hash, mass, and CMF.
+    Generates a simplified DBCT input file with particle hash, mass, and CMF based on a step-function CMF.
 
     Args:
         num_particles (int): The total number of particles to generate.
-        particle_mass (float): The mass assigned to each particle.
-        semi_majors (array): Semi-major axes of the particles.
-        inner_cmf (float): Desired CMF for the particles inside the CMF change boundary
-        outer_cmf (float): Desired CMF for the particles outside the CMF change boundary
-        boundary (float): The CMF change boundary
+        particle_mass (float or array-like): The mass(es) assigned to each particle.
+        semi_majors (array-like): Semi-major axes of the particles.
+        inner_cmf (float): Desired CMF for particles inside the CMF change boundary.
+        outer_cmf (float): Desired CMF for particles outside the CMF change boundary.
+        boundary (float): The CMF change boundary.
         output_filename (str): The name of the output file.
     """
+    particle_mass = np.array(particle_mass)
+    semi_majors = np.array(semi_majors)
+
+    if semi_majors.size != num_particles:
+        raise ValueError("semi_majors must have the same length as num_particles.")
+
+    if particle_mass.size != 1 and particle_mass.size != num_particles:
+        raise ValueError("particle_mass must be a scalar or an array with length equal to num_particles.")
+
     print(f"Output file: {output_filename}")
 
     try:
-        # Open the file in write mode. 'w' will create the file if it doesn't exist,
-        # or overwrite it if it does. Use 'a' if you want to append to an existing file.
-
         with open(output_filename, 'w') as f:
-            # Loop to generate and write particle data
             for i in range(num_particles):
-                # Hash generation, starting from 1
                 particle_hash = i + 1
                 semi = semi_majors[i]
-                if semi <= boundary:
-                    particle_cmf = inner_cmf
-                else:
-                    particle_cmf = outer_cmf
+                mass = particle_mass if particle_mass.size == 1 else particle_mass[i]
 
-                # Write data in tab-separated format
-                # Using f-strings for easy formatting and precision for floats
+                particle_cmf = inner_cmf if semi <= boundary else outer_cmf
 
-                f.write(f"{particle_hash}\t{particle_mass:.8e}\t{particle_cmf:.8e}\n")
+                f.write(f"{particle_hash}\t{mass:.8e}\t{particle_cmf:.8e}\n")
 
         print(f"Successfully generated '{output_filename}' with {num_particles} entries.")
 
@@ -76,22 +77,30 @@ def generate_input_step_function(num_particles, particle_mass, semi_majors, inne
         print(f"Error writing to file '{output_filename}': {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
+
 
 def get_inner_outer_mass(m_emb, m_pl, boundary, a_emb, a_pl):
     m_inner = 0
     m_outer = 0
-    for a in a_pl:
+
+    m_emb = np.array(m_emb)
+    m_pl = np.array(m_pl)
+
+    for mass, a in zip(m_pl, a_pl):
         if a <= boundary:
-            m_inner = m_inner + m_pl
+            m_inner += mass
         else:
-            m_outer = m_outer + m_pl
-    
-    for a in a_emb:
+            m_outer += mass
+
+    for mass, a in zip(m_emb, a_emb):
         if a <= boundary:
-            m_inner = m_inner + m_emb
+            m_inner += mass
         else:
-            m_outer = m_outer + m_emb
+            m_outer += mass
+
     return m_inner, m_outer
+
 
 def get_inner_outer_cmf(cmf_initial, x, m_inner, m_outer):
     m_total = m_inner + m_outer
