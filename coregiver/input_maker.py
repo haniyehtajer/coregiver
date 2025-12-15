@@ -102,6 +102,21 @@ def get_inner_outer_mass(m_emb, m_pl, boundary, a_emb, a_pl):
     return m_inner, m_outer
 
 
+def get_inner_outer_mass_all_pl(m_pl, boundary, a_pl):
+    m_inner = 0
+    m_outer = 0
+
+    m_pl = np.ones(len(a_pl)) * m_pl
+
+    for mass, a in zip(m_pl, a_pl):
+        if a <= boundary:
+            m_inner += mass
+        else:
+            m_outer += mass
+
+    return m_inner, m_outer
+
+
 def get_inner_outer_cmf(cmf_initial, x, m_inner, m_outer):
     m_total = m_inner + m_outer
     iron_moved = x * (cmf_initial * m_outer)
@@ -119,5 +134,11 @@ def get_inner_outer_cmf(cmf_initial, x, m_inner, m_outer):
 def get_dual_cmf(m_emb, m_pl, semis_emb, semis_pl, boundary, x, cmf_init): #mass of emb and pl, semi major of emb and pl, boundary between
                                                                            #inner and outer disk, fraction of iron transport, initial cmf
     m_in, m_out = get_inner_outer_mass(m_emb, m_pl, boundary, semis_emb, semis_pl)
+    cmf_in, cmf_out = get_inner_outer_cmf(cmf_init, x, m_in, m_out)
+    return cmf_in, cmf_out
+
+def get_dual_cmf_all_pl(m_pl, semis_pl, boundary, x, cmf_init): #mass of emb and pl, semi major of emb and pl, boundary between
+                                                                           #inner and outer disk, fraction of iron transport, initial cmf
+    m_in, m_out = get_inner_outer_mass_all_pl(m_pl, boundary, semis_pl)
     cmf_in, cmf_out = get_inner_outer_cmf(cmf_init, x, m_in, m_out)
     return cmf_in, cmf_out

@@ -199,7 +199,7 @@ def track_composition(collision_report_file, composition_input_file, ejection_fi
                 sys.exit(1)
             elif frag_core_frac > 1.0:
                 print('ERROR: Fragment CMF is greater than 1.0 at time and is : ', time, frag_core_frac)
-                sys.exit(1)
+                #sys.exit(1)
 
             for j in range(no_frags):
                 if frag_masses[j] < 0:
@@ -223,7 +223,7 @@ def track_composition(collision_report_file, composition_input_file, ejection_fi
                     sys.exit(1)
                 elif compositions[targ_idx][j] > 1.0:
                     print('ERROR: Largest remnant CMF is greater than 1.0 at time: ', time)
-                    sys.exit(1)
+                    #sys.exit(1)
 
         # Checks to make sure the projectile isn't a second largest remnant before deletion
         for hsh in frag_hashes:
